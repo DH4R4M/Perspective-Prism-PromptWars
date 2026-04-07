@@ -4,11 +4,21 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
+
+# Apply rate limiting using in-memory storage (tracks via X-Forwarded-For automatically in most proxy setups)
+limiter = Limiter(
+    get_remote_address,
+    app=app,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 # We will initialize the Gemini client inside the route to prevent 
 # the server from crashing on startup if the API key isn't set yet.
@@ -25,6 +35,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/analyze', methods=['POST'])
+@limiter.limit("10 per minute")
 def analyze_status():
     global client
     data = request.json
