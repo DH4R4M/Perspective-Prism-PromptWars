@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stadium Sentry | Premium Event Experience</title>
-    <!-- We removed Tailwind CSS and will use modern vanilla CSS in style.css -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
+<body data-theme="night">
     <!-- Ambient UI Background Layers -->
     <div class="ambient-glow glow-blue"></div>
     <div class="ambient-glow glow-red"></div>
@@ -15,7 +14,10 @@
     <div class="app-layout">
         <!-- Sidebar for History -->
         <aside class="sidebar glass">
-            <h2 class="history-title">History Log</h2>
+            <div class="history-header">
+                <h2 class="history-title">History Log</h2>
+                <button id="clear-all-btn" class="clear-history-btn hidden">Clear All</button>
+            </div>
             <div id="history-list" class="history-list">
                 <!-- History items injected here via JS -->
             </div>
@@ -23,14 +25,29 @@
 
         <!-- Main Dashboard -->
         <main class="main-content">
-            <div class="dashboard-panel glass animate-fade-in text-center p-xl mt-lg">
+            <div class="dashboard-panel glass animate-fade-in p-xl mt-lg">
+                
+                <!-- Theme Controls -->
+                <div class="top-controls">
+                    <select id="theme-switcher" class="theme-select">
+                        <option value="night">🌙 Midnight Theme</option>
+                        <option value="day">☀️ Corporate Day</option>
+                        <option value="calm">🌊 Zen Calm</option>
+                    </select>
+                </div>
+
                 <header class="header text-center mb-lg">
                     <h1 class="logo-text neon-text">STADIUM SENTRY</h1>
                     <p class="subtitle">Physical Event Experience Dashboard</p>
                 </header>
 
-                <!-- Status Input Area -->
+                <!-- Input Area -->
                 <div class="input-section mx-auto my-lg max-w-3xl">
+                    <div class="live-analytics">
+                        <div class="live-dot"></div>
+                        <span class="live-text">Live Venue Monitoring Active</span>
+                    </div>
+
                     <label for="venue-status" class="input-label">Current Venue Status</label>
                     <div class="input-group">
                         <input type="text" id="venue-status" class="status-input" placeholder="e.g., Gate A is blocked, fans are hungry...">
@@ -58,7 +75,6 @@
                     <div class="persona-card security-card">
                         <div class="card-header">
                             <div class="icon-container bg-red">
-                                <!-- Security Icon (Shield) -->
                                 <svg class="icon text-red" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
                             </div>
                             <h3 class="card-title text-red">SECURITY</h3>
@@ -75,7 +91,6 @@
                     <div class="persona-card fan-card">
                         <div class="card-header">
                             <div class="icon-container bg-blue">
-                                <!-- Fan Icon (User) -->
                                 <svg class="icon text-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </div>
                             <h3 class="card-title text-blue">FAN</h3>
@@ -92,7 +107,6 @@
                     <div class="persona-card manager-card">
                         <div class="card-header">
                             <div class="icon-container bg-emerald">
-                                <!-- Manager Icon (Briefcase/Ops) -->
                                 <svg class="icon text-emerald" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                             </div>
                             <h3 class="card-title text-emerald">MANAGER</h3>
@@ -118,41 +132,81 @@
         const btnText = document.getElementById('btn-text');
         const loader = document.getElementById('loader');
         const errorMsg = document.getElementById('error-msg');
+        
         const historyList = document.getElementById('history-list');
-
-        // Body glow elements to react to severity
+        const clearAllBtn = document.getElementById('clear-all-btn');
+        const themeSwitcher = document.getElementById('theme-switcher');
         const glowRed = document.querySelector('.glow-red');
 
+        // Initialize Theme from localStorage
+        const savedTheme = localStorage.getItem('stadiumTheme') || 'night';
+        document.body.setAttribute('data-theme', savedTheme);
+        themeSwitcher.value = savedTheme;
+
+        themeSwitcher.addEventListener('change', (e) => {
+            document.body.setAttribute('data-theme', e.target.value);
+            localStorage.setItem('stadiumTheme', e.target.value);
+        });
+
+        // History Management
         let analysisHistory = JSON.parse(localStorage.getItem('stadiumHistory')) || [];
 
         function renderHistory() {
             historyList.innerHTML = '';
             if (analysisHistory.length === 0) {
                 historyList.innerHTML = '<p class="text-muted text-center" style="margin-top: 1rem;">No history</p>';
+                clearAllBtn.classList.add('hidden');
                 return;
             }
-            // Show top 10
-            analysisHistory.slice(0, 10).forEach((item, idx) => {
+            
+            clearAllBtn.classList.remove('hidden');
+
+            analysisHistory.slice(0, 15).forEach((item, idx) => {
                 const el = document.createElement('div');
                 el.className = 'history-item';
-                // Adjust border color based on severity roughly
-                let sevColor = '#3b82f6';
-                if (item.severity >= 8) sevColor = '#ef4444';
-                else if (item.severity >= 5) sevColor = '#eab308';
+                
+                let sevColor = 'var(--color-blue)';
+                if (item.severity >= 8) sevColor = 'var(--color-red)';
+                else if (item.severity >= 5) sevColor = 'var(--color-emerald)';
                 
                 el.style.borderLeft = `4px solid ${sevColor}`;
                 
-                const shortStatus = item.status.length > 40 ? item.status.substring(0, 37) + '...' : item.status;
+                const shortStatus = item.status.length > 35 ? item.status.substring(0, 32) + '...' : item.status;
                 el.innerHTML = `
                     <div class="hist-status">${shortStatus}</div>
-                    <div class="hist-time text-muted">${new Date(item.timestamp).toLocaleTimeString()}</div>
+                    <div class="hist-time">${new Date(item.timestamp).toLocaleTimeString()}</div>
+                    <button class="delete-item-btn" title="Delete record" data-idx="${idx}">×</button>
                 `;
-                el.addEventListener('click', () => loadFromHistory(item));
+                
+                // Allow clicking the actual body to load it, but not the delete button
+                el.addEventListener('click', (e) => {
+                    if(e.target.tagName !== 'BUTTON') {
+                        loadFromHistory(item);
+                    }
+                });
+
+                // Attach delete logic
+                const delBtn = el.querySelector('.delete-item-btn');
+                delBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    analysisHistory.splice(idx, 1);
+                    localStorage.setItem('stadiumHistory', JSON.stringify(analysisHistory));
+                    renderHistory();
+                });
+
                 historyList.appendChild(el);
             });
         }
 
         renderHistory();
+
+        clearAllBtn.addEventListener('click', () => {
+            if(confirm("Are you sure you want to clear all analysis history?")) {
+                analysisHistory = [];
+                localStorage.setItem('stadiumHistory', JSON.stringify(analysisHistory));
+                renderHistory();
+            }
+        });
 
         function loadFromHistory(item) {
             venueStatusInput.value = item.status;
@@ -179,35 +233,32 @@
             document.getElementById('fan-text').textContent = data.Fan || data.fan || "N/A";
             document.getElementById('manager-text').textContent = data.Manager || data.manager || "N/A";
             
-            // Hide skeletons
             document.querySelectorAll('.skeleton-wrapper').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.card-body').forEach(el => el.style.opacity = '1');
             
             resultsContainer.classList.remove('hidden');
             resultsContainer.classList.add('fade-in');
 
-            // Stagger animation for cards
             const cards = document.querySelectorAll('.persona-card');
             cards.forEach((card, index) => {
                 card.style.animation = 'none';
-                card.offsetHeight; // trigger reflow
+                card.offsetHeight; 
                 card.style.animation = `cardEntrance 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards ${index * 0.15}s`;
             });
         }
 
         function updateSeverityGlow(severityLevel) {
-            // Reset base pulses
             glowRed.style.opacity = '0.1';
             glowRed.style.animationDuration = '8s';
 
             if (severityLevel) {
                 const level = parseInt(severityLevel, 10);
                 if (level >= 8) {
-                    glowRed.style.opacity = '0.5';
-                    glowRed.style.animationDuration = '1s';
+                    glowRed.style.opacity = '0.6';
+                    glowRed.style.animationDuration = '0.8s';
                 } else if (level >= 5) {
                     glowRed.style.opacity = '0.3';
-                    glowRed.style.animationDuration = '3s';
+                    glowRed.style.animationDuration = '2.5s';
                 }
             }
         }
@@ -225,7 +276,6 @@
             btnText.classList.add('hidden');
             loader.classList.remove('hidden');
             
-            // Show skeletons instead of text
             resultsContainer.classList.remove('hidden');
             document.querySelectorAll('.card-body').forEach(el => el.style.opacity = '0');
             document.querySelectorAll('.skeleton-wrapper').forEach(el => el.classList.remove('hidden'));
@@ -243,7 +293,6 @@
                     displayResults(data);
                     updateSeverityGlow(data.Severity);
                     
-                    // Save to history
                     const newEntry = {
                         status,
                         data,
@@ -254,7 +303,12 @@
                     localStorage.setItem('stadiumHistory', JSON.stringify(analysisHistory));
                     renderHistory();
                 } else {
-                    errorMsg.textContent = data.error || "An error occurred.";
+                    // Logic to handle 429 rate limit
+                    if (response.status === 429) {
+                        errorMsg.textContent = "Slow down! You are sending too many requests.";
+                    } else {
+                        errorMsg.textContent = data.error || "An error occurred.";
+                    }
                     errorMsg.classList.remove('hidden');
                     resultsContainer.classList.add('hidden');
                 }
